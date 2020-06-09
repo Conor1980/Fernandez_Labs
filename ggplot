@@ -1,0 +1,48 @@
+#### Dummy Data ####
+#First I replicated the exact below plot on my computer with success.
+library(ggplot2)
+#WindSpeed<-c(1,2,3,5,7,2,3,4,5,6,7,8)
+#WindDir<-c(180,90,320,200,350,10,270,50,9,100,110,129)
+
+#TimeStamp<-c("2018-01-02 01:00","2018-01-02 02:00",
+#             "2018-01-02 03:00","2018-01-02 04:00",
+#             "2018-01-02 05:00","2018-01-02 06:00",
+#             "2018-01-02 07:00","2018-01-02 08:00",
+#             "2018-01-02 09:00","2018-01-02 10:00",
+#             "2018-01-02 11:00","2018-01-02 12:00")
+
+
+#### Choose the data file and name gg ####
+gg = read.csv(file.choose())
+head(gg)  
+str(gg)
+
+colnames(gg)[colnames(gg) %in%
+    c("fort_ord_average_air_direction_degreeangle")
+    ]<- 
+    c("AvgAirDir_degree")
+data.frame(colnames(gg))
+
+
+
+#### GGPlot ####
+library(ggplot2)
+
+WindSpeed <- gg$Air_Speed_meterpersecond
+WindDir <- gg$AvgAirDir_degree
+TimeStamp <- gg$date_time
+gg$TimeStamp <- as.POSIXct(as.factor(gg$TimeStamp),  format= "%m/%d/%y %H:%M", tz = 'UTC')
+
+gg<-data.frame(TimeStamp,WindSpeed, WindDir)
+
+ggplot(gg) +
+  geom_segment(aes(x = TimeStamp,
+                   y = 0,
+                   xend = TimeStamp + lubridate::dhours(WindSpeed * 1 * -cos((90-WindDir) / 360 * 2 * pi)),
+                   yend = WindSpeed * 1 * -sin((90-WindDir) / 360 * 2 * pi),
+                   col = factor(TimeStamp)
+  ),
+  arrow = arrow(length = unit(0.5, "cm")))  +
+  geom_point(aes(TimeStamp, 0), size = 1) +
+  coord_fixed(3600) +
+  theme(legend.position = "none")
