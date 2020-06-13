@@ -1,0 +1,67 @@
+
+# Data Wrangling for NPS MET station data - Ord Airfield
+
+#### 1. Install necessary libraries ####
+install.packages(c('tidyverse', 'rvest', 'reshape', 'here', 'readxl'), dependencies = TRUE)
+library(tidyverse); library(rvest); library(reshape)
+
+my.path = 'D:/met.nps.edu_data' # Set working directory for R
+setwd(my.path)                  # Update this for your machine. 
+
+
+#### 2. Scrape webpage for linked data files. ####
+page <- xml2::read_html("https://met.nps.edu/~lind/ord/") %>%  # Read the page. 
+  html_nodes("a") %>%     # find links         
+  html_text(trim = T) %>% # cut out all the html code
+  str_subset("\\.txt")    # find links that are specific to txt files
+
+page <- page[grepl(".txt", page)] # Keep only filenames relevant for download
+
+#### Download files from www ###
+# make sure to adjust the destination to the path on your local computer. Mine is D:/met.nps.edu_data/. %s means string data
+lapply(page, function(x) download.file(sprintf("https://met.nps.edu/~lind/ord/%s", x), 
+                                       sprintf("D:/met.nps.edu_data/%s", x)))
+
+#### Make data header #### 
+# Read the txt file containing the header (column names) for the file kyle2min.txt. It's the only file with a header. 
+# Tack on a header name for "Location" too. 
+header <- c("Location", scan("kyle2min.txt", skip = 1, nlines = 2, what = character())); header
+unlink("kyle2min.txt") # Deletes kyle2min.txt file locally. You could also move it to another director or remove its header and merge it. TBD. 
+
+#### Combine all files in a local directory ####
+
+path = "D:/met.nps.edu_data" # Reset path if you haven't already. 
+
+(allfiles = list.files(path = my.path, pattern = ".txt", full.names = FALSE, recursive = TRUE)) # Read paths
+
+(allnames = str_split(path, pattern = "/", simplify = TRUE))       # Read the path without backslashes.
+(filenames=list.files(path, pattern = ".txt", full.names=TRUE))    # List of full file paths
+
+# Important! Don't do the merge on all 343 files or it might crash. Depends on RAM available. 
+# You can always do this in batches. Eventually we can put this in a for loop. 
+merged = do.call("rbind", lapply(filenames, read.table, header = FALSE))    # bind files by column by appending 
+
+names(merged) = header                     # Add some headers from the trimmed kyle2min file. 
+
+write.csv(merged, file = "merged.csv", row.names = FALSE)   #export as a csv. 
+
+# Still to do. 
+# Create a loop that does this for the files in the directory by year. Single csv file for each years and merge years. 
+# Resolve some issues with files 1991 has problems in data. 
+
+library(tidyverse)
+
+dt <- dir("data", full.names = T) %>% map_df(read.delim)
+
+dt
+
+#### Combine tabs from excel into single dataframe ####
+
+library(readxl); library(tidyverse)
+
+list.files()
+
+dt = excel_sheets("NPSProfilerMet.xls") %>% 
+  map(~read_excel("NPSProfilerMet.xls", .))
+
+dt[1]
