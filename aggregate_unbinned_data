@@ -1,0 +1,91 @@
+#### Aggregating data observations ####
+
+# Now with real fog data! 
+install.packages("readxl", dependencies = TRUE); library("readxl")  # Install packages to import xlsx into R
+# Change path here or instead write >file.choose()
+bucket.82.twingates <- read_excel("/Volumes/RX/_Projects/TimeSerieswithDetka/Import/Twin Gates_20190701_20200617 (1).xlsx",skip=1)  # Import, skip first line 
+View(bucket.82.twingates)
+
+# Aggregate data hourly as sum of events. 
+bucket.82.twingates.hrly <- aggregate(bucket.82.twingates$'Events (State)', list(cut(bucket.82.twingates$Date, "1 hour")), sum)
+View(bucket.82.twingates.hrly)
+
+# Try for one day aggregation
+bucket.82.twingates.day <- aggregate(bucket.82.twingates$'Events (State)', list(cut(bucket.82.twingates$Date, "24 hour")), sum)
+View(bucket.82.twingates.day)
+
+# Try for ten minute aggregation
+bucket.82.twingates.10minute <- aggregate(bucket.82.twingates$'Events (State)', list(cut(bucket.82.twingates$Date, "10 min")), sum)
+View(bucket.82.twingates.10minute)
+
+# Rename the columns 
+colnames(bucket.82.twingates.hrly) <- c("Date", "Total_Hourly_Events")
+
+colnames(bucket.82.twingates.day) <- c("Date", "Total_Day_Events")
+
+colnames(bucket.82.twingates.10minute) <- c("Date", "Total_TenMinute_Events")
+
+# Optional: View data 
+View(bucket.82.twingates.hrly)
+#
+View(bucket.82.twingates.day)
+#
+View(bucket.82.twingates.10minute)
+
+
+#### Add zeros to hrly ####
+# Convention is to create NAs for missing data then convert to zeros
+# The cut function turned the Date vector into factor, so we have to fix that first 
+bucket.82.twingates.hrly$Date = as.POSIXct(as.factor(bucket.82.twingates.hrly$Date))
+# Create a vector for every hour in "bucket.82.hrly"
+date.span <- seq(as.POSIXct(min(bucket.82.twingates.hrly$Date)),
+                 as.POSIXct(max(bucket.82.twingates.hrly$Date)),
+                 by = "1 hour")
+
+# Make date.span vector a data frame, because bucket.82.twingates.hrly is also a data frame 
+# (We always need data frame to data frame or matrix to matrix comparisons)
+all_dates <- data.frame(Date = date.span) 
+
+# Merge the two data frames. 
+#This is like in excel = data analysis, histogram, Date being the bin range 
+merged.bucket.82.hrly <- merge(all_dates, bucket.82.twingates.hrly, by = "Date", all.x = TRUE)
+# all.x = TRUE means keep all rows even if empty
+
+# Replace NA with zero
+merged.bucket.82.hrly[is.na(merged.bucket.82.hrly)] <- 0
+
+# Optional: View data 
+View(date.span)
+View(all_dates)
+View(merged.bucket.82.hrly)
+head(merged.bucket.82.hrly)
+length(merged.bucket.82.hrly)
+
+
+# Optional export the data as a csv. 
+write.csv(bucket.82.twingates.hrly, file = file.choose(new = TRUE), row.names = FALSE)
+
+
+
+
+
+
+#### Or Make a pretend dataset of fog bucket tips. 
+set.seed(42)
+date = seq(as.POSIXct("2017-09-01 12:00:00:00"), as.POSIXct("2017-09-03 12:00:00:00"), by = "123 mins")
+data = sample(c(0,1), length(date), replace = TRUE)
+df = data.frame(as.POSIXct(date), data)
+df.tips.only = df[df$data == 1,]
+colnames(df.tips.only) = c("date", "data")
+df.tips.only
+
+str(df.tips.only$date)
+
+# Aggregating data
+
+df.tips.daily <- aggregate(df.tips.only$data, list(hour=cut(df.tips.only$date, "24 hour")), sum)
+colnames(df.tips.daily) = c("date", "tot.tips")
+
+df.tips.daily
+
+
