@@ -2,8 +2,8 @@
 
 # Now with real fog data! 
 install.packages("readxl", dependencies = TRUE); library("readxl")  # Install packages to import xlsx into R
-# Change path here or instead write >file.choose()
-bucket.82.twingates <- read_excel("/Volumes/RX/_Projects/TimeSerieswithDetka/Import/Twin Gates_20190701_20200617 (1).xlsx",skip=1)  # Import, skip first line 
+# Change path here     (   or instead embed >file.choose()   )
+bucket.82.twingates <- read_excel("COPY THE PATH WITH FILE NAME AND PASTE HERE, IN QUOTES" , skip=1)  # Import, skip first line 
 View(bucket.82.twingates)
 
 # Aggregate data hourly as sum of events. 
@@ -21,38 +21,39 @@ View(bucket.82.twingates.10minute)
 # Rename the columns 
 colnames(bucket.82.twingates.hrly) <- c("Date", "Total_Hourly_Events")
 
+# And these ones if you tried
 colnames(bucket.82.twingates.day) <- c("Date", "Total_Day_Events")
-
 colnames(bucket.82.twingates.10minute) <- c("Date", "Total_TenMinute_Events")
 
 # Optional: View data 
 View(bucket.82.twingates.hrly)
-#
+
 View(bucket.82.twingates.day)
-#
 View(bucket.82.twingates.10minute)
 
 
 #### Add zeros to hrly ####
-# Convention is to create NAs for missing data then convert to zeros
-# The cut function turned the Date vector into factor, so we have to fix that first 
+# Convention is to create NAs for missing data then convert to zeros. (Difficult to force zeros?)
+# The cut function kept our Date vector as a factor, so we have to fix that first 
 bucket.82.twingates.hrly$Date = as.POSIXct(as.factor(bucket.82.twingates.hrly$Date))
-# Create a vector for every hour in "bucket.82.hrly"
+# Create a new vector for every hour in "bucket.82.hrly"
 date.span <- seq(as.POSIXct(min(bucket.82.twingates.hrly$Date)),
                  as.POSIXct(max(bucket.82.twingates.hrly$Date)),
                  by = "1 hour")
 
-# Make date.span vector a data frame, because bucket.82.twingates.hrly is also a data frame 
+# Convert the date.span vector into a data frame, because bucket.82.twingates.hrly is also a data frame 
 # (We always need data frame to data frame or matrix to matrix comparisons)
 all_dates <- data.frame(Date = date.span) 
 
 # Merge the two data frames. 
-#This is like in excel = data analysis, histogram, Date being the bin range 
-merged.bucket.82.hrly <- merge(all_dates, bucket.82.twingates.hrly, by = "Date", all.x = TRUE)
+#This is like in excel => data analysis, histogram, Date being the bin range 
 # all.x = TRUE means keep all rows even if empty
+merged.bucket.82.hrly <- merge(all_dates, bucket.82.twingates.hrly, by = "Date", all.x = TRUE)
 
-# Replace NA with zero
+# Replace all NA with zero
 merged.bucket.82.hrly[is.na(merged.bucket.82.hrly)] <- 0
+
+
 
 # Optional: View data 
 View(date.span)
@@ -62,8 +63,12 @@ head(merged.bucket.82.hrly)
 length(merged.bucket.82.hrly)
 
 
-# Optional export the data as a csv. 
+# Optional export the data as a csv. # A window should pop up asking you where and what name to save as  
 write.csv(bucket.82.twingates.hrly, file = file.choose(new = TRUE), row.names = FALSE)
+
+
+
+
 
 
 
