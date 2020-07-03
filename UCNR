@@ -1,0 +1,27 @@
+R <- R.Version(); R$version.string; R$os
+#### Paste here below so everyone knows ####
+#! [1] "R version 4.0.1 (2020-06-06)"
+#! [1] "darwin17.0"
+
+#### Read in all the data ####
+all2019<-read.csv(file.choose())
+met_UCNR_2020<-read.csv(file.choose())
+b87_2020<-read.csv(file.choose(),skip=6,)
+b88_2020<-read.csv(file.choose(),skip=6,)
+b89_2020<-read.csv(file.choose(),skip=6,)
+b90_2020<-read.csv(file.choose(),skip=6,)
+b91_2020<-read.csv(file.choose(),skip=6,)
+b92_2020<-read.csv(file.choose(),skip=6,)
+b93_2020<-read.csv(file.choose(),skip=6,)
+b94_2020<-read.csv(file.choose(),skip=6,)
+schoon_2020<-read.csv(file.choose(),skip=6,)
+ucbest_2020<-read.csv(file.choose(),skip=6,)
+
+#### Alternative way to load in all the data ####
+# This would be not using file.choose()
+
+#### Aggregate data by ten minutes as a sum of events ####
+head(b87_2020)
+b87_2020$Date <- as.POSIXct(as.factor(b87_2020$Date),  format= "%m/%d/%y %H:%M", tz = 'UTC')
+b87.2020.10min <- aggregate(b87_2020$'Events..State.', list(cut(b87_2020$Date, "10 min")), sum)
+View(b87.2020.10min)
