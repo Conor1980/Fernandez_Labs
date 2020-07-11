@@ -1,0 +1,36 @@
+# Set the working directory to where my files are. 
+setwd("/Users/conorrickard/Documents/R_prog_files/_Projects/FONR/UCNRproj"); getwd()
+
+# Makes a list of the files inside the working directory. 
+filenames <- list.files(pattern = "*.csv"); filenames
+
+# uses the lapply function from tidyverse package to apply the function
+# read.csv to all files in the list 'file.names'.
+
+df <- lapply(filenames, read.csv, skip = 10); df # Data file
+
+names(df)[1:8] <- c("FONR_1","FONR_2","FONR_3","FONR_4","FONR_5","FONR_6","FONR_7","FONR_8")
+
+
+# Convert time to POSIX time
+
+df$FONR_1$DateTime = as.POSIXct(as.character(df$FONR_1$DateTime), format = "%m/%d/%y %H:%M:%S")
+class(df$FONR_1$DateTime)
+df$FONR_1
+df$FONR_2$DateTime = as.POSIXct(as.character(df$FONR_2$DateTime), format = "%m/%d/%y %H:%M:%S")
+df$FONR_3$DateTime = as.POSIXct(as.character(df$FONR_3$DateTime), format = "%m/%d/%y %H:%M:%S")
+df$FONR_4$DateTime = as.POSIXct(as.character(df$FONR_4$DateTime), format = "%m/%d/%y %H:%M:%S")
+df$FONR_5$DateTime = as.POSIXct(as.character(df$FONR_5$DateTime), format = "%m/%d/%y %H:%M:%S")
+df$FONR_6$DateTime = as.POSIXct(as.character(df$FONR_6$DateTime), format = "%m/%d/%y %H:%M:%S")
+df$FONR_7$DateTime = as.POSIXct(as.character(df$FONR_7$DateTime), format = "%m/%d/%y %H:%M:%S")
+df$FONR_8$DateTime = as.POSIXct(as.character(df$FONR_8$DateTime), format = "%m/%d/%y %H:%M:%S")
+
+
+# Cereate a new vector of the date span # 1/2 hour to match CSUMB
+dspanFONR_1 <- seq(as.POSIXct(min(df$FONR_1$DateTime)),
+                 as.POSIXct(max(df$FONR_1$DateTime)),
+                 by = "1 hour")
+
+# Spent a long time, but couldn't solve
+# Error in seq.int(0, to0 - from, by) : 'to' must be a finite number
+# I think it thinks there are NA
