@@ -1,0 +1,151 @@
+## Cut and paste below (add hashtag(s) before), your R version and computer type, so everyone knows
+R <- R.Version(); R$version.string; R$os
+
+
+getwd()
+# Set the working directory  
+setwd("/Users/conorrickard/Documents/R_prog_files/_Projects/FONRCWR/FONRCWR/")
+
+
+# Install necessary packages and call up to current workspace with library
+install.packages(c("zoo", "xts", "tidyverse"), dependencies = TRUE)
+library(tidyverse); library(zoo); library(xts); library(lubridate)
+
+
+# Make a list of the files inside a folder you made with .CSVs 
+fog.files_20 <- list.files(path="/Users/conorrickard/Documents/R_prog_files/_Projects/FONRCWR/Import/Fog_data/",pattern = "*.csv",full.names=TRUE); fog.files_20
+
+# Make sure you pasted your own (path to folder) correctly above. 
+# Read in a the weather file too (path to actual file)
+met.FONR_20 <- read.csv("/Users/conorrickard/Documents/R_prog_files/_Projects/FONRCWR/Import/Weather/UCNR_2020_weather.csv", stringsAsFactors = FALSE)
+str(met.FONR_20)
+class(met.FONR_20$DateTime)
+
+
+# Use the lapply function from tidyverse package to apply the function
+# read.csv to all files in the list 'file.names'.
+
+#setwd("/Users/conorrickard/Documents/R_prog_files/_Projects/FONRCWR/FONRCWR/") # Not sure why this step is here.
+ldf <- lapply(fog.files_20, read.csv, skip = 12); ldf # Data in files extracted into a list by collector
+hdf <- lapply(fog.files_20, read.csv, nrows = 11); hdf # metadata headers of files extracted
+
+# Rename the list 
+names(ldf)[1:10] <- c("FONR_0","FONR_1","FONR_2","FONR_3","FONR_4","FONR_5","FONR_6","FONR_7","FONR_8","SCHR_0")
+
+# data.frame(colnames(met.FONR_20))
+# Rename all the weather variables too
+names(met.FONR_20)[1:18] <- c("DateTime","AirSpeed_metps","AvgBarPres_mbar","AvgDir_degree","AvgRH_percent","AvgAirSpeed_mileph","AvgTemp_cel","AvgSoilMoist_percent","AvgSoilTemp_cel","AvgSolPhotoRad_mmolpsqm","AvgSolRad_Wpsqm","MaxRH_cel","MaxAirSpeed_metps","MaxTemp_cel","MinRH_percent","MinAirSpeed_mileph","MinAirTemp_cel","Precip_mm")
+
+
+# Make a new weather file column/ variable of DPD = Dewpoint Depression. 
+met.FONR_20$DPD = met.FONR_20$AvgTemp_cel-(met.FONR_20$AvgTemp_cel - ((100-met.FONR_20$AvgRH_percent)/5)); head(met.FONR_20$DPD)
+
+
+# Example workflow for processing unbinned fog data into time interval, summed observations
+# Convert DateTime to POSIXlt time from character using striptime function
+ldf$FONR_1$DateTime = strptime(ldf$FONR_1$DateTime, format = "%m/%d/%y %H:%M:%S") ; str(ldf$FONR_1$DateTime)
+
+# Note that strptime converts to POSIXlt format and requires a step to convert from local time (lt) to calendar time (ct)
+ldf$FONR_1$DateTime  <- as.POSIXct(ldf$FONR_1$DateTime, format = "%m/%d/%y %H:%M:%S") 
+
+met.FONR_20$DateTime = as.POSIXct(as.factor(met.FONR_20$DateTime),format= "%Y-%m-%d %H:%M:%S",tz='UTC') 
+
+table(is.na(met.FONR_20$DateTime)) 
+table(is.na(ldf$FONR_1$DateTime))
+
+class(met.FONR_20$DateTime); class(ldf$FONR_1$DateTime)
+str(met.FONR_20$DateTime); str(ldf$FONR_1$DateTime)
+
+
+#########################################
+
+
+# Pull out a dataframe of just FONR_1 first two columns
+df.FONR_1 <- data.frame(ldf$FONR_1[1:2]); str(df.FONR_1); class(df.FONR_1$DateTime)
+
+# Aggregate data hourly as sum of events. 
+# FONR_1.hrly <- aggregate(df.FONR_1$Liters, list(hourfog=cut(df.FONR_1$DateTime, "1 hour")), sum) ; str(FONR_1.hrly)
+
+# Enter zulu date for each cyle here:
+# zulu_2020 = 
+
+# Aggregate fog data as half hourly sum of observed events
+FONR_1.hlfhrly <- aggregate(df.FONR_1$Liters, list(DateTime=cut(df.FONR_1$DateTime, "30 min")), sum) ; str(FONR_1.hlfhrly); head(FONR_1.hlfhrly)
+FONR_1.hlfhrly$DateTime <- as.POSIXct(as.factor(FONR_1.hlfhrly$DateTime), format = "%Y-%m-%d %H:%M:%S"); str(FONR_1.hlfhrly) #aggregate doesn't treat time well
+names(FONR_1.hlfhrly) <- c("DateTime", "Liters"); str(FONR_1.hlfhrly); head(FONR_1.hlfhrly) # Aggregate also fouled up the names
+FONR_1.hlfhrly$DateTime <- align.time(FONR_1.hlfhrly$DateTime, n=60*30); str(FONR_1.hlfhrly$DateTime); head(FONR_1.hlfhrly)  #align.time is a function in library(xts)
+
+
+# Aggregate precipitation data as half hourly sum of observed events
+met.FONR_20.hlfhrly <- aggregate(met.FONR_20$Precip_mm, by = list(DateTime=cut(met.FONR_20$DateTime, "30 min")), mean) ; str(met.FONR_20.hlfhrly)
+met.FONR_20.hlfhrly$DateTime <- as.POSIXct(as.factor(met.FONR_20.hlfhrly$DateTime), format = "%Y-%m-%d %H:%M:%S"); str(met.FONR_20.hlfhrly)
+names(met.FONR_20.hlfhrly) <- c("DateTime", "Precip_mm"); str(met.FONR_20.hlfhrly); head(met.FONR_20.hlfhrly)
+met.FONR_20.hlfhrly$DateTime <- align.time(met.FONR_20.hlfhrly$DateTime, n=60*30); str(met.FONR_20.hlfhrly$DateTime); head(met.FONR_20.hlfhrly)  #align.time is a function in library(xts)
+
+
+# Create a new dataframe containing the span of dates for the dataset in hourly interval.   
+date_span.FONR_1.hlfhrly <- data.frame(DateTime = seq(as.POSIXct(floor_date(min(FONR_1.hlfhrly$DateTime),unit = "30 min")), 
+                        as.POSIXct(ceiling_date(max(FONR_1.hlfhrly$DateTime),unit= "30 min")), 
+                        by = "30 min")) ; str(date_span.FONR_1.hlfhrly)
+
+# # Alternative Approach. 
+# date_span.FONR_1.hlfhrly <- data.frame(DateTime = seq(as.POSIXct(floor_date(min(FONR_1.hrly$DateTime),unit = "hour")), 
+#                         as.POSIXct(ceiling_date(max(FONR_1.hrly$DateTime),unit= "hour")), 
+#                         by = 1800)) ; str(date_span.FONR_1.hlfhrly); head(date_span.FONR_1.hlfhrly)
+
+# Merge the span of dates at hourly interval with the event data. 
+merged.FONR_1.hlfhrly = merge(date_span.FONR_1.hlfhrly, FONR_1.hlfhrly, by = "DateTime", all.x = TRUE) ; str(merged.FONR_1.hlfhrly)
+
+#Replace NA's in Liters with 0 values to represent no events recorded that hour.  
+merged.FONR_1.hlfhrly$Liters[is.na(merged.FONR_1.hlfhrly$Liters)] <- 0; str(merged.FONR_1.hlfhrly); head(merged.FONR_1.hlfhrly)
+
+# Merge the span of dates at hourly interval with the event data. 
+merged.met.20.hlfhrly = merge(date_span.FONR_1.hlfhrly, met.FONR_20.hlfhrly, by = "DateTime", all.x = TRUE) ; str(merged.met.20.hlfhrly); head(merged.met.20.hlfhrly)
+
+merged.met.20.hlfhrly$Liters[is.na(merged.met.20.FONR_1.hlfhrly$Liters)] <- 0; str(merged.met.20.FONR_1.hlfhrly); head(merged.met.20.FONR_1.hlfhrly)
+
+merged.met.20.FONR_1.hlfhrly = merge(merged.met.20.hlfhrly, merged.FONR_1.hlfhrly, by = "DateTime", all.x = TRUE)  
+
+View(merged.met.20.FONR_1.hlfhrly)
+
+
+#Optional: Export revised aggregated data with zero event observations to a new CSV. 
+write.csv(merged.met.20.FONR_1.hlfhrly,"merged.met.20.FONR_1.hlfhrly.csv", row.names = FALSE)
+
+#### Some Examples Plotting aggregated half hourly data #### 
+
+# Two separate plots. 
+par(mfrow=c(2,1))
+
+plot(merged.met.20.FONR_1.hlfhrly$Precip_mm~
+             as.POSIXct(merged.met.20.FONR_1.hlfhrly$DateTime,"%Y-%m-%d"),
+     type="l", xlab="Date",ylab="Precipitation (mm)", main = 'Precipitation', col ='blue')
+
+plot(merged.met.20.FONR_1.hlfhrly$Liters~
+              as.POSIXct(merged.met.20.FONR_1.hlfhrly$DateTime,"%Y-%m-%d"),
+      type="l", xlab="Date",ylab="Fog Water (Liters)", 
+      main = 'Fog', xaxt = "n", col = 'red')
+
+# Overplot of two time series using R base.
+par(mfrow=c(1,1))
+plot(merged.met.20.FONR_1.hlfhrly$Precip_mm~
+             as.POSIXct(merged.met.20.FONR_1.hlfhrly$DateTime,"%Y-%m-%d"),
+     type="l", xlab="Date",ylab="Precipitation (mm)", col ='blue')
+
+lines(merged.met.20.FONR_1.hlfhrly$Liters~
+             as.POSIXct(merged.met.20.FONR_1.hlfhrly$DateTime,"%Y-%m-%d"),
+     type="l", xlab="Date",ylab="Fog Water (Liters)", xaxt = "n", col = 'red')
+
+axis(4, at = seq(min(merged.met.20.FONR_1.hlfhrly$Liters), 
+                 max(merged.met.20.FONR_1.hlfhrly$Liters)), 
+     ylab = 'Liters Fog Water')
+
+
+merged.met.20.FONR_1.hlfhrly.ts <- ts(merged.met.20.FONR_1.hlfhrly)
+plot.ts(merged.met.20.FONR_1.hlfhrly.ts[,2:3])
+
+
+
+
+
+
